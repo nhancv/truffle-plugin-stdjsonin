@@ -23,10 +23,12 @@ module.exports = async (config) => {
       const inputJSON = getInputJSON(artifact, options);
       fs.writeFileSync(`${contractName}-input.json`, JSON.stringify(inputJSON));
       console.log(
-        `Standard JSON Input for ${contractName} saved in ${contractName}-input.json`
+        `Standard JSON Input for ${contractName} is saved in ${contractName}-input.json`
       );
-      console.log('trying to compile and check with generated Standard JSON Input...')
-      tryCompileAndMatch(artifact, inputJSON, contractName)
+      console.log(
+        "[Optional step] trying to compile and check with generated Standard JSON Input..."
+      );
+      tryCompileAndMatch(artifact, inputJSON, contractName);
     } catch (error) {
       logger.error(error.message);
     }
@@ -116,24 +118,32 @@ const tryCompileAndMatch = (artifact, jsonInput, contractName) => {
   iObj.settings.outputSelection = { "*": { "*": ["*", "*"] } };
   const o = solc.compile(JSON.stringify(iObj));
   const oObj = JSON.parse(o);
+  if (oObj.errors?.length > 0) {
+    console.warn("tryCompileAndMatch ERROR:", oObj.errors[0].message);
+    return;
+  }
   const metadataOld = artifact.metadata;
   const metadataOldObj = JSON.parse(metadataOld);
 
-  const path = Object.keys(metadataOldObj.settings.compilationTarget)[0]
-  const metadataNew = oObj.contracts[path][metadataOldObj.settings.compilationTarget[path]].metadata
+  const path = Object.keys(metadataOldObj.settings.compilationTarget)[0];
+  const metadataNew =
+    oObj.contracts[path][metadataOldObj.settings.compilationTarget[path]]
+      .metadata;
 
-  const bytecodeNew = oObj.contracts[path][metadataOldObj.settings.compilationTarget[path]].evm.bytecode.object.replace("0x", "");
+  const bytecodeNew = oObj.contracts[path][
+    metadataOldObj.settings.compilationTarget[path]
+  ].evm.bytecode.object.replace("0x", "");
   const bytecodeOld = artifact.bytecode.replace("0x", "");
 
   if (metadataOld === metadataNew) {
     console.log("\u2713 metadata matches EXACTLY!");
-  }else{
-    console.log('ERROR: metadata does not match')
+  } else {
+    console.log("ERROR: metadata does not match");
   }
 
   if (bytecodeOld === bytecodeNew) {
     console.log("\u2713 bytecode matches EXACTLY!");
-  }else{
-    console.log('ERROR: bytecode does not match')
+  } else {
+    console.log("ERROR: bytecode does not match");
   }
 };
